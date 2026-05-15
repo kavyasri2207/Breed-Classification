@@ -9,7 +9,9 @@ from ultralytics import YOLO
 import pandas as pd
 from fpdf import FPDF
 import io
-# Refresh build - v2.21.0 TensorFlow required
+
+# Flag to indicate if breed classification is available
+CLASSIFIER_AVAILABLE = os.path.exists("breed_classifier_mobilenet (2).h5")
 
 # Breed detailed information for Encyclopedia
 BREED_INFO = {
@@ -94,16 +96,17 @@ BREED_ORIGIN = {
 CLASS_NAMES = sorted(BREED_DATA.keys())
 
 # ==============================
-# LOAD MODEL
+# LOAD MODEL (Conditional - TensorFlow optional)
 # ==============================
 @st.cache_resource
 def load_model():
-    if os.path.exists(MODEL_PATH):
+    if CLASSIFIER_AVAILABLE:
         try:
             import tensorflow as tf
             return tf.keras.models.load_model(MODEL_PATH, compile=False)
-        except Exception as e:
-            st.warning(f"Could not load model: {e}")
+        except ImportError:
+            return None
+        except Exception:
             return None
     return None
 
@@ -187,40 +190,43 @@ def draw_boxes(img, boxes, scores):
 def classify(img, user_location):
     model = load_model()
     if model is None:
-        return None, 0, None
+        return "Model Not Available", 0.0, None
 
-    # Prepare image without keras
-    img = img.resize((224,224))
-    arr = np.array(img, dtype=np.float32)
-    arr = np.expand_dims(arr, axis=0)
-    # MobileNet preprocessing: normalize to [-1, 1]
-    arr = arr / 127.5 - 1.0
+    try:
+        import tensorflow as tf
+        # Prepare image
+        img = img.resize((224, 224))
+        arr = np.array(img, dtype=np.float32)
+        arr = np.expand_dims(arr, axis=0)
+        # MobileNet preprocessing: normalize to [-1, 1]
+        arr = arr / 127.5 - 1.0
 
-    preds = model.predict(arr)[0]
+        preds = model.predict(arr)[0]
 
-    top_idx = np.argsort(preds)[-3:][::-1]
-    top1, top2 = preds[top_idx[0]], preds[top_idx[1]]
+        top_idx = np.argsort(preds)[-3:][::-1]
+        top1, top2 = preds[top_idx[0]], preds[top_idx[1]]
 
-    # Decision logic
-    if top1 < 0.65:
-        if (top1 - top2) < 0.12:
+        # Decision logic
+        if top1 < 0.65:
+            if (top1 - top2) < 0.12:
+                label = "Possible Hybrid Breed"
+            else:
+                label = "Unknown"
+        elif (top1 - top2) < 0.18:
             label = "Possible Hybrid Breed"
         else:
-            label = "Unknown"
-    elif (top1 - top2) < 0.18:
-        label = "Possible Hybrid Breed"
-    else:
-        label = CLASS_NAMES[top_idx[0]]
+            label = CLASS_NAMES[top_idx[0]]
 
-   
-    confidence = float(top1)
+        confidence = float(top1)
 
-    # Geo boost
-    if label in BREED_ORIGIN:
-        if any(loc in user_location.lower() for loc in BREED_ORIGIN[label]):
-            confidence = min(confidence + 0.1, 0.99)
+        # Geo boost
+        if label in BREED_ORIGIN:
+            if any(loc in user_location.lower() for loc in BREED_ORIGIN[label]):
+                confidence = min(confidence + 0.1, 0.99)
 
-    return label, confidence, preds
+        return label, confidence, preds
+    except:
+        return "Model Not Available", 0.0, None
 
 # ==============================
 # UI CONFIG
