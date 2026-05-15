@@ -1,6 +1,5 @@
 streamlit
-keras
-scikit-learn
+tensorflow-hub
 numpy
 Pillow
 ultralytics

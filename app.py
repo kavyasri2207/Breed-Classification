@@ -1,8 +1,6 @@
 import streamlit as st
 st.set_page_config(layout="wide", page_title="Bovine Intelligence System")
 import cv2
-import keras
-from keras.preprocessing import image
 import numpy as np
 import os
 import time
@@ -101,7 +99,12 @@ CLASS_NAMES = sorted(BREED_DATA.keys())
 @st.cache_resource
 def load_model():
     if os.path.exists(MODEL_PATH):
-        return keras.models.load_model(MODEL_PATH, compile=False)
+        try:
+            import tensorflow as tf
+            return tf.keras.models.load_model(MODEL_PATH, compile=False)
+        except Exception as e:
+            st.warning(f"Could not load model: {e}")
+            return None
     return None
 
 # ==============================
@@ -186,10 +189,12 @@ def classify(img, user_location):
     if model is None:
         return None, 0, None
 
+    # Prepare image without keras
     img = img.resize((224,224))
-    arr = image.img_to_array(img)
+    arr = np.array(img, dtype=np.float32)
     arr = np.expand_dims(arr, axis=0)
-    arr = keras.applications.mobilenet.preprocess_input(arr)
+    # MobileNet preprocessing: normalize to [-1, 1]
+    arr = arr / 127.5 - 1.0
 
     preds = model.predict(arr)[0]
 
