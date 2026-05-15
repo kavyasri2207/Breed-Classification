@@ -11,9 +11,6 @@ env/
 # VS Code
 .vscode/
 
-# Streamlit
-.streamlit/
-
 # Runtime files
 flagged_for_learning/
 training_queue/
