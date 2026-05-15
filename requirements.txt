@@ -1,5 +1,6 @@
 streamlit
-tensorflow>=2.18.0
+keras
+scikit-learn
 numpy
 Pillow
 ultralytics

@@ -1,8 +1,8 @@
 import streamlit as st
 st.set_page_config(layout="wide", page_title="Bovine Intelligence System")
-import tensorflow as tf
 import cv2
-from tensorflow.keras.preprocessing import image
+import keras
+from keras.preprocessing import image
 import numpy as np
 import os
 import time
@@ -101,7 +101,7 @@ CLASS_NAMES = sorted(BREED_DATA.keys())
 @st.cache_resource
 def load_model():
     if os.path.exists(MODEL_PATH):
-        return tf.keras.models.load_model(MODEL_PATH, compile=False)
+        return keras.models.load_model(MODEL_PATH, compile=False)
     return None
 
 # ==============================
@@ -189,7 +189,7 @@ def classify(img, user_location):
     img = img.resize((224,224))
     arr = image.img_to_array(img)
     arr = np.expand_dims(arr, axis=0)
-    arr = tf.keras.applications.mobilenet.preprocess_input(arr)
+    arr = keras.applications.mobilenet.preprocess_input(arr)
 
     preds = model.predict(arr)[0]
 
@@ -421,7 +421,7 @@ elif app_mode == "Analyzer":
                         st.download_button("📊 Download CSV Report", csv, "report.csv", "text/csv", use_container_width=True)
                     
                     with col_dl2:
-                        pdf_bytes = create_pdf_report(results_list, img)
+                        pdf_bytes = create_pdf_report(results_list, boxed)
                         st.download_button("📄 Download PDF Report", pdf_bytes, "report.pdf", "application/pdf", use_container_width=True)
 
 # ==============================
@@ -478,6 +478,7 @@ elif app_mode == "Learning Lab":
                
                 img.save(f"{save_dir}/{selected}")
                 st.info("Data saved. Model retraining required externally.")
+                img.close()
                 os.remove(path)
 
                 st.success("Saved")
@@ -486,6 +487,7 @@ elif app_mode == "Learning Lab":
 
         with c2:
             if st.button("Delete"):
+                img.close()
                 os.remove(path)
                 st.warning("Deleted")
                 st.rerun()
