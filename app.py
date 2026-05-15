@@ -1,4 +1,5 @@
 import streamlit as st
+st.set_page_config(layout="wide", page_title="Bovine Intelligence System")
 import tensorflow as tf
 import cv2
 from tensorflow.keras.preprocessing import image
@@ -163,7 +164,6 @@ def classify(img, user_location):
 # ==============================
 # UI CONFIG
 # ==============================
-st.set_page_config(layout="wide")
 st.markdown("""
 <style>
 div.stButton > button {
@@ -246,8 +246,8 @@ elif app_mode == "Analyzer":
     if file:
         try:
             img = Image.open(file).convert("RGB")
-        except:
-            st.error("Invalid image file")
+        except Exception as e:
+            st.error(f"Invalid image file: {e}")
             st.stop()
 
         display_img = enhance_display_image(img)
@@ -287,7 +287,8 @@ elif app_mode == "Analyzer":
 
                     results_list = []
 
-                    for idx, (box, col) in enumerate(zip(boxes, cols)):
+                    for idx, box in enumerate(boxes):
+                        col = cols[idx % 4] # Wrap around columns if >4 animals detected
                         x1, y1, x2, y2 = map(int, box)
                         crop = img.crop((x1, y1, x2, y2)).resize((300, 300))
 
@@ -315,12 +316,14 @@ elif app_mode == "Analyzer":
                             st.markdown(f"Confidence: **{conf*100:.1f}%**")
 
                             # ✅ CHART INSIDE CARD (clean UX)
-                            if label not in ["Unknown", "Possible Hybrid Breed", "Ambiguous"]:
+                            if label not in ["Unknown", "Possible Hybrid Breed", "Ambiguous", None]:
                                 chart_data = {
                                     CLASS_NAMES[j]: float(preds[j])
                                     for j in range(len(CLASS_NAMES))
                                 }
                                 st.bar_chart(chart_data)
+                            elif label is None:
+                                st.error("Model file not found!")
 
                             st.markdown("</div>", unsafe_allow_html=True)
 
