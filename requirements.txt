@@ -1,0 +1,6 @@
+streamlit
+tensorflow==2.16.2
+numpy==1.26.4
+Pillow
+ultralytics
+opencv-python-headless
